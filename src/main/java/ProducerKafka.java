@@ -7,12 +7,20 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 public class ProducerKafka {
     //private static final Logger log = LoggerFactory.getLogger(ProducerKafka.class);
+    private static final int msgsCount = 10000;
+    private static final String topic = "demoTopic3";
 
+    private static byte[] generateRandomMessage(int sizeInBytes) {
+        byte[] message = new byte[sizeInBytes];
+        new Random().nextBytes(message);
+        return message;
+    }
     public static void main(String[] args) {
      //   log.info("Hello from ProducerKafka");
         System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "off");
@@ -25,14 +33,18 @@ public class ProducerKafka {
 
         KafkaProducer<String, byte[]> producer = new KafkaProducer<>(properties);
 
-        byte[] msg = new byte[1024];
-        ProducerRecord<String, byte[]> producerRecord = new ProducerRecord<>("demoTopic", msg);
-        long start = System.currentTimeMillis();
-        producer.send(producerRecord);
-        long responseTimeInMillis = System.currentTimeMillis() - start;
+        double responseTimeInMillis = 0;
+
+        for(int i = 0; i < msgsCount; i++) {
+            byte[] msg = generateRandomMessage(1024);
+            ProducerRecord<String, byte[]> producerRecord = new ProducerRecord<>(topic, null, System.currentTimeMillis(), null, msg);
+            long start = System.currentTimeMillis();
+            producer.send(producerRecord);
+            responseTimeInMillis += System.currentTimeMillis() - start;
+        }
         producer.flush();
         producer.close();
 
-        System.out.println("Response Time in Kafka Producer: " + responseTimeInMillis + " ms");
+        System.out.println("Response Time in Kafka Producer: " + responseTimeInMillis / msgsCount + " ms");
     }
 }

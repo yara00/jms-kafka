@@ -9,20 +9,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Properties;
+import java.util.*;
 
 public class ConsumerKafka {
-    private static final Logger log = LoggerFactory.getLogger(ConsumerKafka.class);
+  // private static final Logger log = LoggerFactory.getLogger(ConsumerKafka.class);
+    private static final int msgsCount = 100000;
+    private static final String topic = "demoTopic3";
 
     public static void main(String[] args) {
-        log.info("Hello World");
-
+        System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "off");
+    //    log.info("Hello World");
         String bootstrapServers = "localhost:9092";
-        String groupId = "hello-y";
-        String topic = "demoTopic";
+        String groupId = "hello-yara";
 
-        // create consumer configs
+        // create consumer properties
         Properties properties = new Properties();
         properties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         properties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
@@ -33,21 +33,32 @@ public class ConsumerKafka {
         KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(properties);
         consumer.subscribe(Arrays.asList(topic));
 
+        double responseTimeInMillis = 0;
 
-        long responseTimeInMillis = 0;
-        // poll for new data
-        while(true){
+        int ctr = 0;
+        List<Long> timeDiff = new ArrayList<>();
+
+        while(ctr < msgsCount) {
             long start = System.currentTimeMillis();
-            ConsumerRecords<String, byte[]> records =
-                    consumer.poll(Duration.ofMillis(100));
-            responseTimeInMillis += (System.currentTimeMillis() - start);
+            ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofMillis(10));
+            long end = System.currentTimeMillis();
+         //   responseTimeInMillis += (end - start);
+            ctr += records.count();
             for (ConsumerRecord<String, byte[]> record : records){
-                log.info("Key: " + record.key() + ", Value: " + record.value());
-                       log.info("Partition: " + record.partition() + ", Offset:" + record.offset());
+               timeDiff.add(end - record.timestamp());
             }
-            System.out.println("Response Time in Kafka consumer: " + responseTimeInMillis + " ms");
-
         }
 
+        Collections.sort(timeDiff);
+        long medianLatency;
+        System.out.println(timeDiff.size());
+        if (timeDiff.size() % 2 == 0) {
+            medianLatency = (timeDiff.get(timeDiff.size() / 2 - 1) + timeDiff.get(timeDiff.size() / 2)) / 2;
+        }
+        else {
+            medianLatency = timeDiff.get(timeDiff.size() / 2);
+        }
+        System.out.println("Response Time in Kafka consumer: " + responseTimeInMillis / ctr + " ms");
+        System.out.println("Median Latency in Kafka consumer: " + medianLatency + " ms");
     }
 }
